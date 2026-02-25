@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WireTrack — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<!-- SUPABASE SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --bg:          #0b0f1a;
+  --bg2:         #111827;
+  --bg3:         #1a2235;
+  --bg4:         #1f2d44;
+  --panel:       #162032;
+  --border:      #1e2d45;
+  --border2:     #2d4060;
+  --text1:       #f0f4ff;
+  --text2:       #8ba3c7;
+  --text3:       #4a6280;
+  --blue:        #3b82f6;
+  --blue-glow:   rgba(59,130,246,.18);
+  --green:       #10b981;
+  --green-glow:  rgba(16,185,129,.15);
+  --amber:       #f59e0b;
+  --amber-glow:  rgba(245,158,11,.15);
+  --red:         #ef4444;
+  --cyan:        #06b6d4;
+  --accent:      #3b82f6;
+  --r:           10px;
+  --r2:          16px;
+  --r3:          24px;
+  --shadow:      0 4px 24px rgba(0,0,0,.4);
+  --shadow-sm:   0 2px 8px rgba(0,0,0,.3);
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+html { scroll-behavior: smooth }
+body {
+  background: var(--bg);
+  color: var(--text1);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+::-webkit-scrollbar { width:5px; height:5px }
+::-webkit-scrollbar-track { background: var(--bg) }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius:3px }
+
+/* ══════════════════════════════════════════
+   LOGIN PAGE
+══════════════════════════════════════════ */
+#loginPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* animated background grid */
+#loginPage::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 15%, rgba(59,130,246,.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 85%, rgba(6,182,212,.07) 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, #0d1525 100%);
+  pointer-events: none;
+}
+
+.login-grid {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: .25;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 80%);
+}
+
+.login-glow {
+  position: fixed;
+  width: 600px; height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59,130,246,.12) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: glowPulse 4s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%,100% { opacity:.6; transform: translate(-50%,-50%) scale(1) }
+  50%      { opacity:1;  transform: translate(-50%,-50%) scale(1.1) }
+}
+
+.login-card {
+  position: relative; z-index: 2;
+  width: 100%; max-width: 420px;
+  margin: 24px;
+  background: rgba(17,24,39,.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border2);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(59,130,246,.08);
+  animation: loginCardIn .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes loginCardIn {
+  from { opacity:0; transform: translateY(30px) scale(.96) }
+  to   { opacity:1; transform: translateY(0) scale(1) }
+}
+
+.login-brand {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 32px;
+}
+.login-brand-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(59,130,246,.4);
+}
+.login-brand-icon svg { width:22px; height:22px; fill:none; stroke:#fff; stroke-width:2 }
+.login-brand-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px; font-weight: 800;
+  letter-spacing: .5px;
+}
+.login-brand-name span { color: var(--blue) }
+.login-brand-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--text3);
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.login-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 700;
+  margin-bottom: 6px;
+}
+.login-subtitle {
+  font-size: 13px; color: var(--text3);
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+/* Supabase config banner */
+.config-banner {
+  background: rgba(245,158,11,.1);
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: var(--amber);
+  display: flex; gap: 8px; align-items: flex-start;
+  line-height: 1.5;
+}
+.config-banner svg { width:14px; height:14px; flex-shrink:0; margin-top:1px }
+.config-banner a { color: var(--blue); text-decoration: none }
+.config-banner a:hover { text-decoration: underline }
+.config-banner.hidden { display: none }
+
+/* Supabase settings panel */
+.supabase-setup {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: none;
+}
+.supabase-setup.show { display: block }
+.supabase-setup-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 2px; color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.form-group { margin-bottom: 18px }
+.form-label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 1.5px; color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.form-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  color: var(--text1);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+.form-input::placeholder { color: var(--text3) }
+.form-input.error { border-color: var(--red) }
+
+.password-wrap { position: relative }
+.password-wrap .form-input { padding-right: 42px }
+.password-toggle {
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none;
+  color: var(--text3); cursor: pointer;
+  display: flex; align-items: center;
+  transition: color .15s;
+}
+.password-toggle:hover { color: var(--text2) }
+.password-toggle svg { width:16px; height:16px }
+
+.form-error {
+  margin-top: 6px;
+  font-size: 12px; color: var(--red);
+  display: none;
+}
+.form-error.show { display: block }
+
+.form-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 7px;
+}
+.form-check {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer;
+  font-size: 13px; color: var(--text2);
+}
+.form-check input { accent-color: var(--blue); width:14px; height:14px }
+.form-link {
+  font-size: 12px; color: var(--blue);
+  text-decoration: none; cursor: pointer;
+  transition: color .15s;
+}
+.form-link:hover { color: #60a5fa }
+
+.btn-login {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, var(--blue) 0%, #2563eb 100%);
+  color: #fff;
+  border: none; border-radius: 12px;
+  font-family: 'Syne', sans-serif;
+  font-size: 15px; font-weight: 700;
+  letter-spacing: .5px;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(59,130,246,.35);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-login:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 30px rgba(59,130,246,.5);
+}
+.btn-login:active { transform: translateY(0) }
+.btn-login:disabled { opacity:.6; cursor:not-allowed; transform:none }
+.btn-login svg { width:16px; height:16px }
+
+.btn-login .spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+}
+@keyframes spin { to { transform: rotate(360deg) } }
+.btn-login.loading .spinner { display: block }
+.btn-login.loading .btn-label { display: none }
+
+.login-divider {
+  text-align: center;
+  margin: 20px 0;
+  position: relative;
+  color: var(--text3);
+  font-size: 12px;
+}
+.login-divider::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 1px; background: var(--border);
+}
+.login-divider span {
+  background: var(--bg2);
+  padding: 0 12px;
+  position: relative;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.btn-demo {
+  width: 100%;
+  padding: 11px;
+  background: none;
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  color: var(--text2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-demo:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(6,182,212,.08);
+}
+.btn-demo svg { width:14px; height:14px }
+
+.login-footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px; color: var(--text3);
+}
+
+/* alert boxes */
+.alert {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: none;
+  gap: 8px; align-items: flex-start;
+  line-height: 1.5;
+}
+.alert.show { display: flex }
+.alert-error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #fca5a5 }
+.alert-success { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); color: #6ee7b7 }
+.alert svg { width:14px; height:14px; flex-shrink:0; margin-top:1px }
+
+/* ══════════════════════════════════════════
+   MAIN APP (same as original)
+══════════════════════════════════════════ */
+#appPage { display: none }
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(59,130,246,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 90%, rgba(6,182,212,.04) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+.app {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+}
+.sidebar-brand {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.brand-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px }
+.brand-icon {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.brand-icon svg { width:18px; height:18px; fill:none; stroke:#fff; stroke-width:2 }
+.brand-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px; font-weight: 700;
+  letter-spacing: .5px; line-height: 1.2;
+}
+.brand-name span { color: var(--blue) }
+.brand-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--text3);
+  letter-spacing: 2px; text-transform: uppercase;
+}
+.sidebar-nav { flex: 1; padding: 16px 10px; overflow-y: auto }
+.nav-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 2px; color: var(--text3);
+  text-transform: uppercase;
+  padding: 0 10px; margin: 14px 0 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--r);
+  cursor: pointer; transition: all .15s;
+  color: var(--text2);
+  font-size: 13px; font-weight: 500;
+  position: relative; user-select: none;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text1) }
+.nav-item.active { background: var(--blue-glow); color: var(--text1) }
+.nav-item.active::before {
+  content: '';
+  position: absolute; left: 0; top: 20%; bottom: 20%;
+  width: 2.5px; background: var(--blue); border-radius: 2px;
+}
+.nav-item svg { width:15px; height:15px; flex-shrink:0; opacity:.6 }
+.nav-item.active svg, .nav-item:hover svg { opacity:1 }
+.nav-count {
+  margin-left: auto;
+  background: var(--bg4);
+  color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; padding: 1px 7px;
+  border-radius: 10px;
+}
+.nav-item.active .nav-count { background: var(--blue); color: #fff }
+.sidebar-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+.footer-stat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--text3);
+  letter-spacing: 1px;
+  display: flex; align-items: center; gap: 6px;
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 2.5s ease infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* User info in footer */
+.user-info {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0;
+  margin-bottom: 8px;
+}
+.user-avatar {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 11px; font-weight: 700;
+  color: #fff; flex-shrink: 0;
+}
+.user-details { flex:1; min-width:0 }
+.user-name {
+  font-size: 12px; font-weight: 600;
+  color: var(--text1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.user-role {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--text3);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.btn-logout {
+  background: none; border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 10px;
+  color: var(--text3); font-size: 11px;
+  cursor: pointer; transition: all .15s;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: .5px; white-space: nowrap;
+}
+.btn-logout:hover { border-color: var(--red); color: var(--red) }
+
+/* MAIN */
+.main { margin-left: 260px; flex:1; display:flex; flex-direction:column; min-height:100vh }
+.topbar {
+  position: sticky; top: 0; z-index: 90;
+  background: rgba(11,15,26,.88);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 58px;
+  display: flex; align-items: center; gap: 14px;
+}
+.topbar-back {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: none; color: var(--text2);
+  cursor: pointer; transition: all .15s; flex-shrink: 0;
+}
+.topbar-back:hover { border-color: var(--blue); color: var(--blue) }
+.topbar-back.visible { display: flex }
+.topbar-back svg { width:15px; height:15px }
+.breadcrumb-nav {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text3);
+}
+.breadcrumb-nav .crumb { color: var(--text3); cursor: pointer; transition:.15s }
+.breadcrumb-nav .crumb:hover { color: var(--text2) }
+.breadcrumb-nav .crumb.current { color: var(--text1); font-weight: 600; cursor: default }
+.breadcrumb-nav .sep { color: var(--text3); margin: 0 1px }
+.topbar-spacer { flex:1 }
+.topbar-actions { display:flex; gap:8px }
+
+/* SYNC STATUS */
+.sync-status {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text3);
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+.sync-dot { width:6px; height:6px; border-radius:50%; background: var(--green); flex-shrink:0 }
+.sync-dot.syncing { background: var(--amber); animation: pulse 1s ease infinite }
+.sync-dot.offline { background: var(--red) }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--r);
+  border: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: .3px;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn svg { width:13px; height:13px }
+.btn-ghost { background: none; border: 1px solid var(--border2); color: var(--text2) }
+.btn-ghost:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-glow) }
+.btn-primary { background: var(--blue); color: #fff }
+.btn-primary:hover { background: #2563eb; box-shadow: 0 0 14px rgba(59,130,246,.4) }
+.btn-success { background: none; border: 1px solid var(--green); color: var(--green) }
+.btn-success:hover { background: var(--green-glow) }
+
+.content { padding: 24px 28px 48px; flex:1 }
+.page-header { margin-bottom: 24px }
+.page-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 700;
+  color: var(--text1); margin-bottom: 4px;
+}
+.page-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text3);
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 16px; position: relative; overflow: hidden;
+  transition: border-color .2s;
+}
+.stat-card:hover { border-color: var(--border2) }
+.stat-card::before { content:''; position:absolute; bottom:0; left:0; right:0; height:2px }
+.stat-card.blue::before  { background: var(--blue) }
+.stat-card.green::before { background: var(--green) }
+.stat-card.amber::before { background: var(--amber) }
+.stat-card.cyan::before  { background: var(--cyan) }
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px; font-weight: 600;
+  color: var(--text1); line-height: 1; margin-bottom: 6px;
+}
+.stat-label { font-size:11px; color:var(--text3); font-weight:500; letter-spacing:.3px; text-transform:uppercase }
+.stat-icon { position:absolute; right:14px; top:14px; opacity:.08 }
+.stat-icon svg { width:36px; height:36px }
+
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 2px; color: var(--text3);
+  text-transform: uppercase;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px;
+}
+.section-label::after { content:''; flex:1; height:1px; background:var(--border) }
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+.project-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px;
+  cursor: pointer; transition: all .15s;
+  animation: fadeUp .2s ease both;
+}
+.project-card:hover {
+  border-color: var(--blue); background: var(--bg3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(59,130,246,.12);
+}
+.project-card.has-children:hover { border-color: var(--cyan) }
+@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+.project-icon {
+  width: 38px; height: 38px; flex-shrink: 0;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+}
+.project-icon.folder    { background: rgba(59,130,246,.12) }
+.project-icon.subfolder { background: rgba(6,182,212,.12) }
+.project-info { flex:1; min-width:0 }
+.project-name-text {
+  font-weight:600; font-size:13px; color:var(--text1);
+  text-transform:uppercase; letter-spacing:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px;
+}
+.project-meta-text { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3) }
+.project-card-actions { display:flex; align-items:center; gap:6px; flex-shrink:0 }
+.icon-btn {
+  width:30px; height:30px; border-radius:8px;
+  border:1px solid var(--border); background:none; color:var(--text3);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .15s; flex-shrink:0;
+}
+.icon-btn svg { width:14px; height:14px }
+.icon-btn:hover { border-color:var(--green); color:var(--green); background:var(--green-glow) }
+.arrow-chip {
+  width:28px; height:28px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:6px; background:var(--bg4); color:var(--text3); transition:all .15s;
+}
+.arrow-chip svg { width:14px; height:14px }
+.project-card:hover .arrow-chip { background:var(--blue); color:#fff }
+.project-card.has-children:hover .arrow-chip { background:var(--cyan); color:#fff }
+
+.table-wrapper { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r2); overflow:hidden }
+.table-toolbar {
+  padding:14px 18px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+.table-toolbar-title { font-family:'Syne',sans-serif; font-size:13px; font-weight:700 }
+.search-input {
+  flex:1; max-width:280px; padding:7px 12px;
+  background:var(--bg3); border:1px solid var(--border2); border-radius:8px;
+  color:var(--text1); font-family:'JetBrains Mono',monospace; font-size:11px;
+  transition:border-color .15s;
+}
+.search-input:focus { outline:none; border-color:var(--blue) }
+.search-input::placeholder { color:var(--text3) }
+
+.filter-bar {
+  width:100%; display:flex; align-items:center; gap:6px;
+  padding:10px 18px; border-bottom:1px solid var(--border);
+  background:var(--bg3); flex-wrap:wrap;
+}
+.filter-label {
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px; font-weight:600; letter-spacing:1.5px; color:var(--text3);
+  text-transform:uppercase; margin-right:4px; flex-shrink:0;
+}
+.filter-group { display:flex; gap:5px; flex-wrap:wrap }
+.filter-chip {
+  display:inline-flex; align-items:center; gap:5px; padding:4px 11px;
+  border-radius:20px; border:1px solid var(--border2); background:none;
+  font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600;
+  color:var(--text3); letter-spacing:.5px; cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.filter-chip:hover { border-color:var(--border2); color:var(--text2); background:var(--bg4) }
+.filter-chip.active-all    { border-color:var(--blue);  color:var(--blue);  background:var(--blue-glow) }
+.filter-chip.active-xe     { border-color:var(--blue);  color:var(--blue);  background:var(--blue-glow) }
+.filter-chip.active-sp     { border-color:var(--green); color:var(--green); background:var(--green-glow) }
+.filter-chip.active-tw     { border-color:var(--cyan);  color:var(--cyan);  background:rgba(6,182,212,.12) }
+.filter-chip.active-simple { border-color:#94a3b8; color:#94a3b8; background:rgba(100,116,139,.1) }
+.filter-chip.active-done        { border-color:var(--green); color:var(--green); background:var(--green-glow) }
+.filter-chip.active-in_progress { border-color:var(--amber); color:var(--amber); background:var(--amber-glow) }
+.filter-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0 }
+.filter-count { background:var(--bg4); color:var(--text3); font-size:9px; padding:1px 5px; border-radius:8px; margin-left:2px }
+.filter-chip.active-all .filter-count,
+.filter-chip.active-xe .filter-count,
+.filter-chip.active-sp .filter-count,
+.filter-chip.active-tw .filter-count,
+.filter-chip.active-simple .filter-count,
+.filter-chip.active-done .filter-count,
+.filter-chip.active-in_progress .filter-count { background:currentColor; color:var(--bg) }
+
+.search-wrap {
+  display:flex; align-items:center;
+  background:var(--bg3); border:1px solid var(--border2); border-radius:8px;
+  overflow:hidden; transition:border-color .15s; flex:1; max-width:260px;
+}
+.search-wrap:focus-within { border-color:var(--blue) }
+.search-wrap-icon { padding:0 10px; color:var(--text3); flex-shrink:0; display:flex; align-items:center }
+.search-wrap-icon svg { width:13px; height:13px }
+.search-wrap input {
+  flex:1; border:none; background:none; color:var(--text1);
+  font-family:'JetBrains Mono',monospace; font-size:11px; padding:7px 10px 7px 0;
+}
+.search-wrap input:focus { outline:none }
+.search-wrap input::placeholder { color:var(--text3) }
+.search-clear { padding:0 10px; cursor:pointer; color:var(--text3); background:none; border:none; font-size:14px; line-height:1; display:none; align-items:center }
+.search-clear.show { display:flex }
+.search-clear:hover { color:var(--red) }
+.result-badge { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text3); margin-left:auto; flex-shrink:0 }
+.result-badge span { color:var(--text1); font-weight:600 }
+
+table { width:100%; border-collapse:collapse }
+thead th {
+  padding:11px 16px; text-align:left;
+  font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:600;
+  letter-spacing:1.5px; color:var(--text3); text-transform:uppercase;
+  background:var(--bg3); border-bottom:1px solid var(--border);
+}
+tbody tr { border-bottom:1px solid var(--border); transition:background .1s; cursor:pointer }
+tbody tr:last-child { border-bottom:none }
+tbody tr:hover { background:var(--bg3) }
+tbody td { padding:12px 16px; font-size:13px; vertical-align:middle }
+
+.ref-code { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--blue); letter-spacing:.5px }
+.ref-extra { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3) }
+.ref-date  { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3) }
+.wire-id   { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--text1) }
+
+.type-badge {
+  display:inline-flex; align-items:center;
+  font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600;
+  padding:3px 10px; border-radius:6px; letter-spacing:.5px; text-transform:uppercase;
+}
+.type-simple { background:rgba(100,116,139,.15); color:#94a3b8 }
+.type-xe     { background:rgba(59,130,246,.15);  color:var(--blue) }
+.type-sp     { background:rgba(16,185,129,.15);  color:var(--green) }
+.type-tw     { background:rgba(6,182,212,.15);   color:var(--cyan) }
+
+.status-select {
+  appearance:none; background:var(--bg3); border:1px solid var(--border2);
+  color:var(--text1); font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500;
+  padding:6px 28px 6px 10px; border-radius:8px; cursor:pointer;
+  transition:border-color .15s,background .15s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a6280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 8px center; min-width:140px;
+}
+.status-select:focus { outline:none; border-color:var(--blue) }
+.status-select.done { border-color:var(--green); background-color:var(--green-glow); color:var(--green) }
+.status-select.in-progress { border-color:var(--amber); background-color:var(--amber-glow); color:var(--amber) }
+.status-na { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text3) }
+
+.progress-wrap { margin-bottom:20px }
+.progress-bar-track { height:4px; background:var(--border); border-radius:2px; overflow:hidden }
+.progress-bar-fill {
+  height:100%; background:linear-gradient(90deg,var(--blue),var(--cyan));
+  border-radius:2px; transition:width .4s ease;
+}
+.progress-label {
+  font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3);
+  display:flex; justify-content:space-between; margin-bottom:6px;
+}
+
+.empty-state { padding:60px 20px; text-align:center }
+.empty-icon {
+  width:56px; height:56px; background:var(--bg3); border-radius:16px;
+  display:flex; align-items:center; justify-content:center; margin:0 auto 14px;
+}
+.empty-icon svg { width:26px; height:26px; stroke:var(--text3) }
+.empty-title { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--text2); margin-bottom:6px }
+.empty-sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3) }
+
+.toast {
+  position:fixed; bottom:24px; right:24px;
+  background:var(--bg2); border:1px solid var(--border2); border-radius:var(--r2);
+  padding:12px 18px; display:flex; align-items:center; gap:10px;
+  font-size:13px; font-weight:500; box-shadow:var(--shadow);
+  z-index:999; transform:translateY(80px); opacity:0;
+  transition:all .25s cubic-bezier(.34,1.56,.64,1);
+}
+.toast.show { transform:translateY(0); opacity:1 }
+.toast-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0 }
+.toast.success .toast-dot { background:var(--green) }
+.toast.error   .toast-dot { background:var(--red) }
+.toast.info    .toast-dot { background:var(--blue) }
+
+.hamburger {
+  display:none; width:34px; height:34px;
+  background:none; border:1px solid var(--border); border-radius:8px;
+  color:var(--text2); cursor:pointer; align-items:center; justify-content:center; flex-shrink:0;
+}
+.hamburger svg { width:16px; height:16px }
+.sidebar-mask { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:99 }
+.sidebar-mask.show { display:block }
+
+@media(max-width:900px) {
+  .sidebar { transform:translateX(-100%) }
+  .sidebar.open { transform:translateX(0) }
+  .main { margin-left:0 }
+  .hamburger { display:flex }
+  .content { padding:16px }
+  .topbar { padding:0 16px }
+  .stats-row { grid-template-columns:repeat(2,1fr) }
+  .project-grid { grid-template-columns:1fr }
+}
+@media(max-width:600px) {
+  .stats-row { grid-template-columns:repeat(2,1fr) }
+  thead { display:none }
+  tbody tr { display:block; border:1px solid var(--border); border-radius:var(--r2); margin-bottom:10px; padding:12px; background:var(--bg2) }
+  tbody tr:last-child { border-bottom:1px solid var(--border) }
+  tbody td { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:8px 0 }
+  tbody td:last-child { border-bottom:none }
+  tbody td::before { content:attr(data-label); font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:600; letter-spacing:1px; color:var(--text3); text-transform:uppercase; flex-shrink:0; margin-right:8px }
+}
+.fade-in { animation:fadeUp .2s ease both }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LOGIN PAGE
+══════════════════════════════════════════ -->
+<div id="loginPage">
+  <div class="login-grid"></div>
+  <div class="login-glow"></div>
+
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M22 12H18L15 21L9 3L6 12H2"/></svg>
+      </div>
+      <div>
+        <div class="login-brand-name">WIRE<span>TRACK</span></div>
+        <div class="login-brand-sub">Digital Checklist System</div>
+      </div>
+    </div>
+
+    <!-- Supabase config panel — always visible, toggleable -->
+    <div class="supabase-setup show" id="supabaseSetup" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="supabase-setup-title" style="margin-bottom:0">⚙ Supabase Configuration</div>
+        <button onclick="document.getElementById('supabaseSetup').classList.toggle('show')"
+          style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1;padding:0 4px"
+          title="Collapse">×</button>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Project URL</label>
+        <input class="form-input" id="sbUrl" type="url"
+          placeholder="https://xxxx.supabase.co">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Anon / Public Key</label>
+        <input class="form-input" id="sbKey" type="text"
+          placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn-demo" onclick="saveSupabaseConfig()" style="flex:1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save & Connect
+        </button>
+        <button class="btn-demo" onclick="useDemoMode()" style="flex:1;border-color:var(--cyan);color:var(--cyan)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+          Demo Mode
+        </button>
+      </div>
+      <div id="sbConnectStatus" style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);min-height:14px"></div>
+    </div>
+
+    <div class="login-title">Welcome back</div>
+    <div class="login-subtitle">Sign in to access your wire harness checklists</div>
+
+    <div class="alert alert-error" id="loginError">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      <span id="loginErrorMsg">Invalid email or password.</span>
+    </div>
+    <div class="alert alert-success" id="loginSuccess">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      <span id="loginSuccessMsg">Signed in successfully!</span>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="emailInput">Email Address</label>
+      <input class="form-input" id="emailInput" type="email" placeholder="your@email.com" autocomplete="email">
+      <div class="form-error" id="emailError">Please enter a valid email.</div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-row">
+        <label class="form-label" for="passInput">Password</label>
+        <a class="form-link" href="#" onclick="forgotPassword(event)">Forgot password?</a>
+      </div>
+      <div class="password-wrap">
+        <input class="form-input" id="passInput" type="password" placeholder="••••••••" autocomplete="current-password">
+        <button class="password-toggle" onclick="togglePassword()" tabindex="-1" type="button">
+          <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="form-error" id="passError">Password must be at least 6 characters.</div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:20px">
+      <label class="form-check">
+        <input type="checkbox" id="rememberMe" checked>
+        Keep me signed in
+      </label>
+    </div>
+
+    <button class="btn-login" id="loginBtn" onclick="handleLogin()">
+      <span class="btn-label">Sign In</span>
+      <div class="spinner"></div>
+    </button>
+
+    <div class="login-divider"><span>or</span></div>
+
+    <button class="btn-demo" onclick="useDemoMode()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+      Continue in Demo Mode (no database)
+    </button>
+
+    <div class="login-footer">
+      WireTrack v2.0 · Wire Harness Management System<br>
+      <a href="#" class="form-link" style="font-size:11px;margin-top:6px;display:inline-block"
+        onclick="event.preventDefault();document.getElementById('supabaseSetup').classList.toggle('show');document.getElementById('supabaseSetup').scrollIntoView({behavior:'smooth'})">
+        ⚙ Configure Supabase database
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════ -->
+<div id="appPage">
+  <div class="sidebar-mask" id="sidebarMask" onclick="closeSidebar()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-top">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24"><path d="M22 12H18L15 21L9 3L6 12H2"/></svg>
+        </div>
+        <div>
+          <div class="brand-name">WIRE<span>TRACK</span></div>
+          <div class="brand-sub">Digital Checklist</div>
+        </div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-footer">
+      <div class="user-info" id="userInfoBox"></div>
+      <div class="footer-stat">
+        <div class="status-dot"></div>
+        SYSTEM ACTIVE · V2.0
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <button class="topbar-back" id="backBtn" onclick="handleBack()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="breadcrumb-nav" id="breadcrumb"></div>
+      <div class="topbar-spacer"></div>
+      <div class="sync-status" id="syncStatus">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">SYNCED</span>
+      </div>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </header>
+    <main class="content" id="viewContainer"></main>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div class="toast-dot"></div>
+  <span id="toastMsg"></span>
+</div>
+
+<input type="file" id="excelRef"       accept=".xlsx,.xls,.csv" style="display:none">
+<input type="file" id="excelChecklist" accept=".xlsx,.xls,.csv" style="display:none">
+
+<script>
+// ═══════════════════════════════════════════════
+// GLOBALS
+// ═══════════════════════════════════════════════
+var _supabase = null;   // use _supabase to avoid conflict with window.supabase SDK
+var currentUser = null;
+var demoMode = false;
+
+var SB_URL_KEY = 'wt_sb_url';
+var SB_KEY_KEY = 'wt_sb_key';
+
+function initSupabase(url, key) {
+  try {
+    // The CDN exposes window.supabase.createClient
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      console.warn('Supabase SDK not loaded yet');
+      return false;
+    }
+    _supabase = window.supabase.createClient(url, key);
+    return true;
+  } catch(e) {
+    console.error('Supabase init error', e);
+    return false;
+  }
+}
+
+function loadSavedConfig() {
+  try {
+    var url = localStorage.getItem(SB_URL_KEY);
+    var key = localStorage.getItem(SB_KEY_KEY);
+    if (url && key) {
+      document.getElementById('sbUrl').value = url;
+      document.getElementById('sbKey').value = key;
+      if (initSupabase(url, key)) {
+        var statusEl = document.getElementById('sbConnectStatus');
+        if (statusEl) { statusEl.style.color='var(--green)'; statusEl.textContent='✓ Supabase connected'; }
+        document.getElementById('supabaseSetup').classList.remove('show');
+      }
+    }
+  } catch(e) { console.warn('loadSavedConfig error', e); }
+}
+
+function saveSupabaseConfig() {
+  const url = document.getElementById('sbUrl').value.trim();
+  const key = document.getElementById('sbKey').value.trim();
+  const statusEl = document.getElementById('sbConnectStatus');
+  if (!url || !key) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '⚠ Please enter both URL and Key.';
+    return;
+  }
+  if (!url.startsWith('https://')) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '⚠ URL must start with https://';
+    return;
+  }
+  localStorage.setItem(SB_URL_KEY, url);
+  localStorage.setItem(SB_KEY_KEY, key);
+  if (initSupabase(url, key)) {
+    statusEl.style.color = 'var(--green)';
+    statusEl.textContent = '✓ Connected! You can now sign in below.';
+    setTimeout(() => {
+      document.getElementById('supabaseSetup').classList.remove('show');
+    }, 1200);
+  } else {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '✗ Connection failed. Check your URL and Key.';
+  }
+}
+
+function toggleSetup() {
+  document.getElementById('supabaseSetup').classList.toggle('show');
+}
+
+// ── AUTH ───────────────────────────────────────
+async function handleLogin() {
+  var email = document.getElementById('emailInput').value.trim();
+  var pass  = document.getElementById('passInput').value;
+  clearLoginErrors();
+
+  var valid = true;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    document.getElementById('emailError').classList.add('show');
+    document.getElementById('emailInput').classList.add('error');
+    valid = false;
+  }
+  if (pass.length < 6) {
+    document.getElementById('passError').classList.add('show');
+    document.getElementById('passInput').classList.add('error');
+    valid = false;
+  }
+  if (!valid) return;
+
+  if (!_supabase) {
+    showLoginAlert('error', 'No database connected. Enter your Supabase credentials above, or use Demo Mode.');
+    document.getElementById('supabaseSetup').classList.add('show');
+    return;
+  }
+
+  setLoginLoading(true);
+  try {
+    var result = await _supabase.auth.signInWithPassword({ email: email, password: pass });
+    if (result.error) throw result.error;
+    var u = result.data.user;
+    currentUser = {
+      id: u.id,
+      email: u.email,
+      name: (u.user_metadata && u.user_metadata.full_name) || u.email.split('@')[0],
+      role: (u.user_metadata && u.user_metadata.role) || 'operator',
+    };
+    showLoginAlert('success', 'Welcome back, ' + currentUser.name + '!');
+    setTimeout(launchApp, 800);
+  } catch(err) {
+    setLoginLoading(false);
+    showLoginAlert('error', (err && err.message) || 'Login failed. Check your email and password.');
+  }
+}
+
+function useDemoMode() {
+  demoMode = true;
+  currentUser = { id:'demo', email:'demo@wiretrack.local', name:'Demo User', role:'admin' };
+  launchApp();
+}
+
+async function forgotPassword(e) {
+  e && e.preventDefault();
+  var email = document.getElementById('emailInput').value.trim();
+  if (!email) { showLoginAlert('error','Enter your email address first, then click Forgot Password.'); return; }
+  if (!_supabase) { showLoginAlert('error','Connect Supabase first to use password reset.'); return; }
+  try {
+    var result = await _supabase.auth.resetPasswordForEmail(email);
+    if (result.error) throw result.error;
+    showLoginAlert('success', 'Password reset email sent! Check your inbox.');
+  } catch(err) {
+    showLoginAlert('error', (err && err.message) || 'Failed to send reset email.');
+  }
+}
+
+function handleLogout() {
+  if (_supabase && !demoMode) _supabase.auth.signOut();
+  currentUser = null; demoMode = false;
+  references = {}; checklists = {};
+  currentProjectId = null; currentReferenceId = null;
+  document.getElementById('appPage').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+  clearLoginErrors();
+  document.getElementById('emailInput').value = '';
+  document.getElementById('passInput').value = '';
+}
+
+function launchApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('appPage').style.display = 'block';
+  updateUserInfo();
+  syncStatus('synced');
+  render();
+}
+
+// ── LOGIN UI HELPERS ───────────────────────────
+function setLoginLoading(v) {
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = v;
+  btn.classList.toggle('loading', v);
+}
+
+function showLoginAlert(type, msg) {
+  document.getElementById('loginError').classList.remove('show');
+  document.getElementById('loginSuccess').classList.remove('show');
+  if (type === 'error') {
+    document.getElementById('loginErrorMsg').textContent = msg;
+    document.getElementById('loginError').classList.add('show');
+  } else {
+    document.getElementById('loginSuccessMsg').textContent = msg;
+    document.getElementById('loginSuccess').classList.add('show');
+  }
+}
+
+function clearLoginErrors() {
+  document.getElementById('loginError').classList.remove('show');
+  document.getElementById('loginSuccess').classList.remove('show');
+  document.getElementById('emailError').classList.remove('show');
+  document.getElementById('passError').classList.remove('show');
+  document.getElementById('emailInput').classList.remove('error');
+  document.getElementById('passInput').classList.remove('error');
+}
+
+function togglePassword() {
+  const inp = document.getElementById('passInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// ── USER INFO ──────────────────────────────────
+function updateUserInfo() {
+  const box = document.getElementById('userInfoBox');
+  if (!currentUser) { box.innerHTML=''; return; }
+  const initials = currentUser.name.slice(0,2).toUpperCase();
+  box.innerHTML = `
+    <div class="user-avatar">${initials}</div>
+    <div class="user-details">
+      <div class="user-name">${currentUser.name}</div>
+      <div class="user-role">${currentUser.role}${demoMode?' · demo':''}</div>
+    </div>
+    <button class="btn-logout" onclick="handleLogout()">Sign out</button>`;
+}
+
+// ── SYNC STATUS ────────────────────────────────
+function syncStatus(state) {
+  const dot   = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  if (state === 'syncing') { dot.className='sync-dot syncing'; label.textContent='SYNCING…' }
+  else if (state==='offline') { dot.className='sync-dot offline'; label.textContent='OFFLINE' }
+  else { dot.className='sync-dot'; label.textContent = demoMode ? 'DEMO MODE' : 'SYNCED' }
+}
+
+// ── SUPABASE DB OPERATIONS ────────────────────
+async function dbSaveStatus(itemId, field, value) {
+  if (!_supabase || demoMode) return;
+  syncStatus('syncing');
+  try {
+    var col = field==='cutting' ? 'cutting_status' : field==='wpa' ? 'wpa_status' : 'twist_status';
+    var result = await _supabase.from('wire_items').update({ [col]: value }).eq('id', itemId);
+    if (result.error) throw result.error;
+    syncStatus('synced');
+  } catch(e) { console.warn('DB sync error:', e); syncStatus('offline'); }
+}
+
+async function dbSaveItems(refId, items) {
+  if (!_supabase || demoMode) return;
+  syncStatus('syncing');
+  try {
+    var rows = items.map(function(i) { return {
+      id: i.id, reference_id: refId,
+      wire_id: i.wireId, type: i.type,
+      cutting_status: i.cutting_status,
+      wpa_status: i.wpa_status,
+      twist_status: i.twist_status,
+    }; });
+    var result = await _supabase.from('wire_items').upsert(rows);
+    if (result.error) throw result.error;
+    syncStatus('synced');
+  } catch(e) { console.warn('DB save error:', e); syncStatus('offline'); }
+}
+
+// ═══════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════
+const projects = [
+  { id:1,  name:'JCB',           parentId:null },
+  { id:2,  name:'CLLAS',         parentId:null },
+  { id:3,  name:'JOHN DEERE',    parentId:null },
+  { id:4,  name:'DAF / VCE',     parentId:null },
+  { id:5,  name:'VOLVO',         parentId:null },
+  { id:6,  name:'IVECO',         parentId:null },
+  { id:7,  name:'MAN',           parentId:null },
+  { id:8,  name:'MAN CBP',       parentId:null },
+  { id:9,  name:'MAN FPP',       parentId:null },
+  { id:10, name:'SMALL',         parentId:5 },
+  { id:11, name:'AFTER MARKET',  parentId:5 },
+  { id:12, name:'VCE',           parentId:5 },
+  { id:13, name:'C1',            parentId:5 },
+  { id:14, name:'C2',            parentId:5 },
+  { id:15, name:'C3',            parentId:5 },
+  { id:16, name:'STEP E',        parentId:5 },
+];
+
+let references  = {};
+let checklists  = {};
+let nextRefId   = 1000;
+let nextCheckId = 2000;
+
+let currentProjectId   = null;
+let currentReferenceId = null;
+
+const P          = id => projects.find(p => p.id === id);
+const children   = pid => projects.filter(p => p.parentId === pid);
+const hasKids    = pid => children(pid).length > 0;
+const parentOf   = pid => { const p = P(pid); return p ? p.parentId : null; };
+const topLevel   = () => projects.filter(p => p.parentId === null);
+
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+let toastTimer;
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  const tm = document.getElementById('toastMsg');
+  el.className = `toast ${type}`;
+  tm.textContent = msg;
+  requestAnimationFrame(() => el.classList.add('show'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════
+// SIDEBAR NAV
+// ═══════════════════════════════════════════════
+function renderSidebarNav() {
+  const nav = document.getElementById('sidebarNav');
+  let html = `
+    <div class="nav-section-label">Projects</div>
+    <div class="nav-item ${!currentProjectId?'active':''}" onclick="gotoHome()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      All Projects
+      <span class="nav-count">${topLevel().length}</span>
+    </div>`;
+  topLevel().forEach(p => {
+    const active = currentProjectId === p.id || isDescendantOf(currentProjectId, p.id);
+    html += `
+      <div class="nav-item ${active?'active':''}" onclick="gotoProject(${p.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        ${p.name}
+        ${hasKids(p.id) ? `<span class="nav-count">${children(p.id).length}</span>` : ''}
+      </div>`;
+  });
+  nav.innerHTML = html;
+}
+
+function isDescendantOf(childId, ancestorId) {
+  if (!childId) return false;
+  let p = parentOf(childId);
+  while (p !== null) { if (p === ancestorId) return true; p = parentOf(p); }
+  return false;
+}
+function gotoHome()      { currentProjectId = null; currentReferenceId = null; render(); closeSidebar(); }
+function gotoProject(id) { currentProjectId = id;   currentReferenceId = null; render(); closeSidebar(); }
+
+// ═══════════════════════════════════════════════
+// TOPBAR
+// ═══════════════════════════════════════════════
+function renderTopbar() {
+  const backBtn    = document.getElementById('backBtn');
+  const breadcrumb = document.getElementById('breadcrumb');
+  const actions    = document.getElementById('topbarActions');
+  const crumbs     = buildBreadcrumbs();
+  backBtn.className = 'topbar-back' + (crumbs.length > 1 ? ' visible' : '');
+  breadcrumb.innerHTML = crumbs.map((c, i) => {
+    const isLast = i === crumbs.length - 1;
+    return `${i > 0 ? '<span class="sep">/</span>' : ''}
+      <span class="crumb ${isLast?'current':''}" ${!isLast?`onclick="${c.onclick}"`:''}>${c.label}</span>`;
+  }).join('');
+  actions.innerHTML = '';
+  if (currentReferenceId !== null) {
+    actions.innerHTML = `
+      <button class="btn btn-success" onclick="triggerChecklistUpload(${currentReferenceId})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import Checklist
+      </button>`;
+  } else if (currentProjectId !== null && !hasKids(currentProjectId)) {
+    actions.innerHTML = `
+      <button class="btn btn-success" onclick="triggerRefUpload(${currentProjectId})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import Excel
+      </button>`;
+  }
+}
+
+function buildBreadcrumbs() {
+  const crumbs = [{ label:'PROJECTS', onclick:'gotoHome()' }];
+  if (currentProjectId !== null) {
+    const chain = [];
+    let id = currentProjectId;
+    while (id !== null) { chain.unshift(P(id)); id = parentOf(id); }
+    chain.forEach((p, i) => {
+      const isLast = i === chain.length - 1 && currentReferenceId === null;
+      crumbs.push({ label: p.name, onclick: isLast ? '' : `gotoProject(${p.id})` });
+    });
+  }
+  if (currentReferenceId !== null) {
+    const ref = findRef(currentReferenceId);
+    if (ref) crumbs.push({ label: ref.refNumber, onclick: '' });
+  }
+  return crumbs;
+}
+function findRef(refId) {
+  for (const pid in references) {
+    const f = references[pid].find(r => r.id === refId);
+    if (f) return f;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function render() {
+  renderSidebarNav();
+  renderTopbar();
+  const vc = document.getElementById('viewContainer');
+  if      (currentReferenceId !== null)                         renderChecklist(vc);
+  else if (currentProjectId !== null && hasKids(currentProjectId)) renderChildren(vc);
+  else if (currentProjectId !== null)                           renderRefs(vc);
+  else                                                          renderHome(vc);
+}
+
+function renderHome(vc) {
+  const top = topLevel();
+  const totalRefs  = Object.values(references).reduce((a,b)=>a+b.length,0);
+  const totalWires = Object.values(checklists).reduce((a,b)=>a+b.length,0);
+  const doneWires  = Object.values(checklists).reduce((a,b)=>a+b.filter(i=>i.cutting_status==='done').length,0);
+  vc.innerHTML = `
+    <div class="page-header fade-in">
+      <div class="page-title">Wire Harness Projects</div>
+      <div class="page-subtitle">Select a project to manage references and wire checklists</div>
+    </div>
+    <div class="stats-row fade-in">
+      <div class="stat-card blue">
+        <div class="stat-value">${top.length}</div>
+        <div class="stat-label">Projects</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-value">${totalRefs}</div>
+        <div class="stat-label">References</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-value">${totalWires}</div>
+        <div class="stat-label">Total Wires</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M22 12H18L15 21L9 3L6 12H2"/></svg></div>
+      </div>
+      <div class="stat-card cyan">
+        <div class="stat-value">${totalWires ? Math.round(doneWires/totalWires*100) : 0}%</div>
+        <div class="stat-label">Completed</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polyline points="20 6 9 17 4 12"/></svg></div>
+      </div>
+    </div>
+    <div class="section-label">Active Projects</div>
+    <div class="project-grid" id="projGrid"></div>`;
+  const grid = document.getElementById('projGrid');
+  top.forEach((p, i) => {
+    const refCount = (references[p.id] || []).length;
+    const isParent = hasKids(p.id);
+    grid.innerHTML += `
+      <div class="project-card ${isParent?'has-children':''} fade-in" style="animation-delay:${i*30}ms" onclick="gotoProject(${p.id})">
+        <div class="project-icon ${isParent?'subfolder':'folder'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="project-info">
+          <div class="project-name-text">${p.name}</div>
+          <div class="project-meta-text">${isParent ? children(p.id).length + ' sections' : refCount + ' references'}</div>
+        </div>
+        <div class="project-card-actions">
+          ${!isParent ? `<button class="icon-btn" title="Import Excel" onclick="event.stopPropagation();triggerRefUpload(${p.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>` : ''}
+          <div class="arrow-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+function renderChildren(vc) {
+  const proj = P(currentProjectId);
+  const kids = children(currentProjectId);
+  vc.innerHTML = `
+    <div class="page-header fade-in">
+      <div class="page-title">${proj.name}</div>
+      <div class="page-subtitle">${kids.length} sections — select one to manage references</div>
+    </div>
+    <div class="section-label">Sections</div>
+    <div class="project-grid" id="projGrid"></div>`;
+  const grid = document.getElementById('projGrid');
+  kids.forEach((p, i) => {
+    const refCount = (references[p.id] || []).length;
+    grid.innerHTML += `
+      <div class="project-card fade-in" style="animation-delay:${i*30}ms" onclick="gotoProject(${p.id})">
+        <div class="project-icon folder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="project-info">
+          <div class="project-name-text">${p.name}</div>
+          <div class="project-meta-text">${refCount} references</div>
+        </div>
+        <div class="project-card-actions">
+          <button class="icon-btn" title="Import Excel" onclick="event.stopPropagation();triggerRefUpload(${p.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
+          <div class="arrow-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+function renderRefs(vc) {
+  const proj = P(currentProjectId);
+  const refs = references[currentProjectId] || [];
+  vc.innerHTML = `
+    <div class="page-header fade-in">
+      <div class="page-title">${proj.name}</div>
+      <div class="page-subtitle">${refs.length} references imported</div>
+    </div>
+    ${refs.length === 0 ? emptyState('No References','Import an Excel file to load wire references for this project.') : `
+    <div class="table-wrapper fade-in">
+      <div class="table-toolbar">
+        <div class="table-toolbar-title">Reference List</div>
+        <input class="search-input" id="refSearch" placeholder="Filter references..." oninput="filterRefs()" autocomplete="off">
+      </div>
+      <table><thead><tr>
+        <th>Reference #</th><th>Extra Data</th><th>Imported</th><th></th>
+      </tr></thead><tbody id="refTableBody"></tbody></table>
+    </div>`}`;
+  if (refs.length > 0) renderRefRows(refs);
+}
+
+function renderRefRows(refs) {
+  const tb = document.getElementById('refTableBody');
+  if (!tb) return;
+  tb.innerHTML = refs.map(ref => `
+    <tr onclick="gotoRef(${ref.id})">
+      <td data-label="Ref #"><span class="ref-code">${ref.refNumber}</span></td>
+      <td data-label="Data"><span class="ref-extra">${ref.extra ? Object.values(ref.extra).slice(0,2).join(' · ') : '—'}</span></td>
+      <td data-label="Date"><span class="ref-date">${new Date(ref.createdAt).toLocaleDateString('fr-MA')}</span></td>
+      <td data-label=""><div class="arrow-chip" style="margin-left:auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div></td>
+    </tr>`).join('');
+}
+window.filterRefs = function() {
+  const q = document.getElementById('refSearch')?.value.toLowerCase() || '';
+  const refs = (references[currentProjectId]||[]).filter(r=>r.refNumber.toLowerCase().includes(q));
+  renderRefRows(refs);
+};
+
+function gotoRef(refId) { currentReferenceId = refId; render(); }
+
+// ── CHECKLIST ─────────────────────────────────
+let ckFilter = { type:'all', status:'all', search:'' };
+
+function renderChecklist(vc) {
+  const ref   = findRef(currentReferenceId);
+  const items = checklists[currentReferenceId] || [];
+  const done  = items.filter(i=>i.cutting_status==='done').length;
+  const pct   = items.length ? Math.round(done/items.length*100) : 0;
+  const cntXE=items.filter(i=>i.type==='xe').length;
+  const cntSP=items.filter(i=>i.type==='sp').length;
+  const cntTW=items.filter(i=>i.type==='tw').length;
+  const cntSimple=items.filter(i=>i.type==='simple').length;
+  const cntDone=items.filter(i=>i.cutting_status==='done').length;
+  const cntProg=items.filter(i=>i.cutting_status==='in_progress').length;
+  vc.innerHTML = `
+    <div class="page-header fade-in">
+      <div class="page-title">${ref?.refNumber||'—'}</div>
+      <div class="page-subtitle" id="ckSubtitle">${items.length} wires · ${done} cutting done · ${pct}% complete · ${cntSP} SP / ${cntXE} XE in WPA</div>
+    </div>
+    ${items.length > 0 ? `
+    <div class="progress-wrap fade-in">
+      <div class="progress-label">
+        <span>Cutting Progress</span>
+        <span style="color:var(--text1);font-weight:600">${done}/${items.length}</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progFill" style="width:${pct}%"></div>
+      </div>
+    </div>` : ''}
+    ${items.length===0 ? emptyState('No Wire Checklist','Import an Excel file with Wire ID and Type columns to populate the checklist.') : `
+    <div class="table-wrapper fade-in">
+      <div class="table-toolbar">
+        <div class="table-toolbar-title">Wire Checklist</div>
+        <div class="search-wrap">
+          <div class="search-wrap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+          <input id="ckSearch" type="text" placeholder="Search wire ID..." value="${ckFilter.search}" oninput="onCkSearch(this.value)" autocomplete="off">
+          <button class="search-clear ${ckFilter.search?'show':''}" id="searchClearBtn" onclick="clearCkSearch()">×</button>
+        </div>
+        <div class="result-badge" id="resultBadge"></div>
+      </div>
+      <div class="filter-bar">
+        <span class="filter-label">Type</span>
+        <div class="filter-group">
+          <button class="filter-chip ${ckFilter.type==='all'?'active-all':''}"    onclick="setCkFilter('type','all')">All <span class="filter-count">${items.length}</span></button>
+          <button class="filter-chip ${ckFilter.type==='xe'?'active-xe':''}"     onclick="setCkFilter('type','xe')"><span class="filter-dot" style="color:var(--blue)"></span>XE <span class="filter-count">${cntXE}</span></button>
+          <button class="filter-chip ${ckFilter.type==='sp'?'active-sp':''}"     onclick="setCkFilter('type','sp')"><span class="filter-dot" style="color:var(--green)"></span>SP <span class="filter-count">${cntSP}</span></button>
+          <button class="filter-chip ${ckFilter.type==='tw'?'active-tw':''}"     onclick="setCkFilter('type','tw')"><span class="filter-dot" style="color:var(--cyan)"></span>TW <span class="filter-count">${cntTW}</span></button>
+          <button class="filter-chip ${ckFilter.type==='simple'?'active-simple':''}" onclick="setCkFilter('type','simple')"><span class="filter-dot" style="color:#94a3b8"></span>SIMPLE <span class="filter-count">${cntSimple}</span></button>
+        </div>
+        <div style="width:1px;height:20px;background:var(--border);margin:0 6px;flex-shrink:0"></div>
+        <span class="filter-label">Status</span>
+        <div class="filter-group">
+          <button class="filter-chip ${ckFilter.status==='all'?'active-all':''}"         onclick="setCkFilter('status','all')">All</button>
+          <button class="filter-chip ${ckFilter.status==='done'?'active-done':''}"       onclick="setCkFilter('status','done')"><span class="filter-dot" style="color:var(--green)"></span>Done <span class="filter-count">${cntDone}</span></button>
+          <button class="filter-chip ${ckFilter.status==='in_progress'?'active-in_progress':''}" onclick="setCkFilter('status','in_progress')"><span class="filter-dot" style="color:var(--amber)"></span>In Progress <span class="filter-count">${cntProg}</span></button>
+        </div>
+      </div>
+      <table><thead><tr>
+        <th>Wire ID</th><th>Type</th><th>Cutting Area</th><th>WPA (XE / SP)</th><th>Twist (TW)</th>
+      </tr></thead><tbody id="checkBody"></tbody></table>
+    </div>`}`;
+  if (items.length > 0) applyChecklistFilters();
+}
+
+function applyChecklistFilters() {
+  const items = checklists[currentReferenceId] || [];
+  const q = ckFilter.search.toLowerCase().trim();
+  const filtered = items.filter(item => {
+    const matchType   = ckFilter.type==='all'   || item.type===ckFilter.type;
+    const matchStatus = ckFilter.status==='all' || item.cutting_status===ckFilter.status;
+    const matchSearch = !q || item.wireId.toLowerCase().includes(q);
+    return matchType && matchStatus && matchSearch;
+  });
+  renderCheckRows(filtered);
+  const badge = document.getElementById('resultBadge');
+  if (badge) badge.innerHTML = filtered.length < items.length
+    ? `Showing <span>${filtered.length}</span> of ${items.length}`
+    : `<span>${items.length}</span> wires`;
+}
+
+function renderCheckRows(filtered) {
+  const tb = document.getElementById('checkBody');
+  if (!tb) return;
+  if (filtered.length === 0) {
+    tb.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">No wires match the current filters</td></tr>`;
+    return;
+  }
+  const q = ckFilter.search.toLowerCase().trim();
+  tb.innerHTML = filtered.map(item => {
+    let wireDisplay = item.wireId;
+    if (q) {
+      const idx = item.wireId.toLowerCase().indexOf(q);
+      if (idx !== -1) wireDisplay = item.wireId.slice(0,idx) + `<mark style="background:rgba(59,130,246,.3);color:var(--text1);border-radius:2px;padding:0 1px">${item.wireId.slice(idx,idx+q.length)}</mark>` + item.wireId.slice(idx+q.length);
+    }
+    return `<tr data-item-id="${item.id}">
+      <td data-label="Wire ID"><span class="wire-id">${wireDisplay}</span></td>
+      <td data-label="Type"><span class="type-badge type-${item.type}">${item.type.toUpperCase()}</span></td>
+      <td data-label="Cutting">
+        <select class="status-select ${item.cutting_status}" data-field="cutting" onchange="updateStatus(${item.id},'cutting',this)">
+          <option value="in_progress" ${item.cutting_status==='in_progress'?'selected':''}>In Progress</option>
+          <option value="done" ${item.cutting_status==='done'?'selected':''}>Done</option>
+        </select>
+      </td>
+      <td data-label="WPA">
+        ${(item.type==='xe'||item.type==='sp') ? `<select class="status-select ${item.wpa_status}" data-field="wpa" onchange="updateStatus(${item.id},'wpa',this)">
+          <option value="in_progress" ${item.wpa_status==='in_progress'?'selected':''}>In Progress</option>
+          <option value="done" ${item.wpa_status==='done'?'selected':''}>Done</option>
+        </select>` : '<span class="status-na">—</span>'}
+      </td>
+      <td data-label="Twist">
+        ${item.type==='tw' ? `<select class="status-select ${item.twist_status}" data-field="twist" onchange="updateStatus(${item.id},'twist',this)">
+          <option value="in_progress" ${item.twist_status==='in_progress'?'selected':''}>In Progress</option>
+          <option value="done" ${item.twist_status==='done'?'selected':''}>Done</option>
+        </select>` : '<span class="status-na">—</span>'}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+window.setCkFilter = function(key, val) {
+  ckFilter[key] = val;
+  renderChecklist(document.getElementById('viewContainer'));
+};
+window.onCkSearch = function(val) {
+  ckFilter.search = val;
+  const btn = document.getElementById('searchClearBtn');
+  if (btn) btn.classList.toggle('show', !!val);
+  applyChecklistFilters();
+};
+window.clearCkSearch = function() {
+  ckFilter.search = '';
+  const inp = document.getElementById('ckSearch');
+  if (inp) { inp.value=''; inp.focus(); }
+  document.getElementById('searchClearBtn')?.classList.remove('show');
+  applyChecklistFilters();
+};
+window.updateStatus = function(itemId, field, select) {
+  const val = select.value;
+  for (const rid in checklists) {
+    const item = checklists[rid].find(i=>i.id===itemId);
+    if (item) {
+      if (field==='cutting') item.cutting_status = val;
+      else if (field==='wpa') item.wpa_status = val;
+      else if (field==='twist') item.twist_status = val;
+      break;
+    }
+  }
+  select.className = `status-select ${val}`;
+  dbSaveStatus(itemId, field, val); // sync to DB
+  const items = checklists[currentReferenceId] || [];
+  const done  = items.filter(i=>i.cutting_status==='done').length;
+  const pct   = items.length ? Math.round(done/items.length*100) : 0;
+  const sub   = document.getElementById('ckSubtitle');
+  const fill  = document.getElementById('progFill');
+  if (sub)  sub.textContent = `${items.length} wires · ${done} cutting done · ${pct}% complete · ${items.filter(i=>i.type==='sp').length} SP / ${items.filter(i=>i.type==='xe').length} XE in WPA`;
+  if (fill) fill.style.width = pct + '%';
+  toast(val==='done' ? 'Marked as Done' : 'Status updated', val==='done'?'success':'info');
+};
+
+// ═══════════════════════════════════════════════
+// EXCEL IMPORT
+// ═══════════════════════════════════════════════
+window.triggerRefUpload = function(projectId) {
+  const inp = document.getElementById('excelRef');
+  inp.value = '';
+  inp.onchange = e => { const f=e.target.files[0]; if(!f)return; parseExcel(f, rows=>importRefs(projectId,rows)); };
+  inp.click();
+};
+window.triggerChecklistUpload = function(refId) {
+  const inp = document.getElementById('excelChecklist');
+  inp.value = '';
+  inp.onchange = e => { const f=e.target.files[0]; if(!f)return; parseExcel(f, rows=>importChecklist(refId,rows)); };
+  inp.click();
+};
+function parseExcel(file, cb) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    cb(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}));
+  };
+  reader.readAsArrayBuffer(file);
+}
+function importRefs(projectId, rows) {
+  if (rows.length<2) { toast('Excel file is empty.','error'); return; }
+  const hdrs = rows[0].map(h=>String(h).toLowerCase().trim());
+  let rci = hdrs.findIndex(h=>h.includes('ref')||h.includes('reference')||h==='id');
+  if (rci===-1) rci=0;
+  const newRefs = [];
+  for (let i=1;i<rows.length;i++) {
+    const row=rows[i]; if(!row.length)continue;
+    const rn=String(row[rci]||'').trim(); if(!rn)continue;
+    const extra={};
+    hdrs.forEach((h,idx)=>{if(idx!==rci&&row[idx]!==undefined&&row[idx]!=='')extra[h]=row[idx];});
+    newRefs.push({id:nextRefId++,refNumber:rn,extra:Object.keys(extra).length?extra:null,createdAt:new Date()});
+  }
+  if(!references[projectId]) references[projectId]=[];
+  references[projectId].push(...newRefs);
+  toast(`${newRefs.length} references imported`,'success');
+  render();
+}
+function importChecklist(refId, rows) {
+  if (rows.length<2) { toast('Excel file is empty.','error'); return; }
+  const hdrs=rows[0].map(h=>String(h).toLowerCase().trim());
+  let wc=hdrs.findIndex(h=>h.includes('wire')||h.includes('id')||h.includes('identifier'));
+  if(wc===-1)wc=0;
+  let tc=hdrs.findIndex(h=>h.includes('type'));
+  if(tc===-1)tc=1;
+  const newItems=[];
+  for(let i=1;i<rows.length;i++){
+    const row=rows[i]; if(!row.length)continue;
+    const wid=String(row[wc]||'').trim(); if(!wid)continue;
+    let t=String(row[tc]||'').toLowerCase().trim();
+    if(t.includes('xe'))t='xe';
+    else if(t.includes('sp'))t='sp';
+    else if(t.includes('twist')||t.includes('tw'))t='tw';
+    else t='simple';
+    newItems.push({id:nextCheckId++,wireId:wid,type:t,cutting_status:'in_progress',wpa_status:(t==='xe'||t==='sp')?'in_progress':null,twist_status:t==='tw'?'in_progress':null});
+  }
+  if(!checklists[refId]) checklists[refId]=[];
+  checklists[refId].push(...newItems);
+  dbSaveItems(refId, newItems); // save to DB
+  toast(`${newItems.length} wires imported`,'success');
+  render();
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+window.handleBack = function() {
+  if (currentReferenceId!==null) { currentReferenceId=null; ckFilter={type:'all',status:'all',search:''}; }
+  else if (currentProjectId!==null) { currentProjectId=parentOf(currentProjectId); }
+  render();
+};
+function emptyState(title,sub) {
+  return `<div class="empty-state fade-in">
+    <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+    <div class="empty-title">${title}</div>
+    <div class="empty-sub">${sub}</div>
+  </div>`;
+}
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarMask').classList.toggle('show'); }
+function closeSidebar()  { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarMask').classList.remove('show'); }
+
+// ═══════════════════════════════════════════════
+// INIT — safe, no async crash
+// ═══════════════════════════════════════════════
+function init() {
+  // Always show login first
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('appPage').style.display = 'none';
+
+  // Load saved Supabase config
+  loadSavedConfig();
+
+  // Try to restore session only if Supabase is ready
+  if (_supabase) {
+    _supabase.auth.getSession().then(function(result) {
+      var session = result && result.data && result.data.session;
+      if (session) {
+        var u = session.user;
+        currentUser = {
+          id: u.id, email: u.email,
+          name: (u.user_metadata && u.user_metadata.full_name) || u.email.split('@')[0],
+          role: (u.user_metadata && u.user_metadata.role) || 'operator',
+        };
+        launchApp();
+      }
+    }).catch(function(e) { console.warn('Session check failed', e); });
+  }
+
+  // Enter key submits login
+  ['emailInput','passInput'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', function(e) { if(e.key==='Enter') handleLogin(); });
+  });
+}
+
+// Run after DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
